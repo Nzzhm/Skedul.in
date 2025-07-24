@@ -1,0 +1,68 @@
+{
+  "project_info": {
+    "project_number": "703710806219",
+    "project_id": "skedul-1n",
+    "storage_bucket": "skedul-1n.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:703710806219:android:1ccbce46504bf5630a1b4e",
+        "android_client_info": {
+          "package_name": "com.aplikasi.skedulin"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "703710806219-g155cm7vliv8cq6c31tda9o75l5274fu.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAgldaTQ3Mk7cf45aqgPBbXRfrxuCVJIrw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "703710806219-g155cm7vliv8cq6c31tda9o75l5274fu.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:703710806219:android:da5e99ac518287b70a1b4e",
+        "android_client_info": {
+          "package_name": "com.project.skedulin"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "703710806219-g155cm7vliv8cq6c31tda9o75l5274fu.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAgldaTQ3Mk7cf45aqgPBbXRfrxuCVJIrw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "703710806219-g155cm7vliv8cq6c31tda9o75l5274fu.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
