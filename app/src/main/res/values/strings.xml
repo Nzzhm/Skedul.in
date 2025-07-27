@@ -3,4 +3,7 @@
     <string name="title_activity_main2">MainActivity2</string>
     <string name="title_activity_tambah_tugas">TambahTugas</string>
     <string name="title_activity_tampil_tugas">TampilTugas</string>
+    <string name="title_activity_edit_tugas">EditTugas</string>
+    <string name="title_activity_history_tugas">HistoryTugas</string>
+    <string name="title_activity_semua_tugas">SemuaTugas</string>
 </resources>

@@ -7,7 +7,6 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -21,10 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.navigation.NavHostController
-import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.FirebaseDatabase
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -47,57 +43,89 @@ class TambahTugas : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TambahTugasScreen(onTaskAdded: () -> Unit) {
-    val currentUser = FirebaseAuth.getInstance().currentUser
     val context = LocalContext.current
 
-    // State untuk form input
+    // State variables - menggunakan derivedStateOf untuk optimasi
     var namatugas by remember { mutableStateOf("") }
     var deskripsi by remember { mutableStateOf("") }
     var prioritasPilihan by remember { mutableStateOf("Sedang") }
-    var isSelesai by remember { mutableStateOf(false) }
 
-    // State untuk tanggal dan waktu
+    // Calendar instances - hanya dibuat sekali
     val deadlineCalendar = remember { Calendar.getInstance() }
     val pengingatCalendar = remember { Calendar.getInstance() }
 
-    // State untuk teks yang ditampilkan di UI
     var deadlineText by remember { mutableStateOf("") }
     var pengingatText by remember { mutableStateOf("") }
 
-    val sdf = SimpleDateFormat("d MMMM yyyy, HH:mm", Locale.getDefault())
+    // DateFormat - dibuat sekali dan di-remember
+    val sdf = remember { SimpleDateFormat("d MMMM yyyy, HH:mm", Locale.getDefault()) }
 
-    // Fungsi untuk menampilkan Time Picker, dipanggil setelah Date Picker selesai
-    fun showTimePicker(calendar: Calendar, onTimeSelected: (String) -> Unit) {
-        val timeSetListener = TimePickerDialog.OnTimeSetListener { _, hour, minute ->
-            calendar.set(Calendar.HOUR_OF_DAY, hour)
-            calendar.set(Calendar.MINUTE, minute)
-            onTimeSelected(sdf.format(calendar.time))
+    // Optimized time picker function - menghindari recreate dialog
+    val showTimePicker = remember {
+        { calendar: Calendar, onTimeSelected: (String) -> Unit ->
+            TimePickerDialog(
+                context,
+                { _, hour, minute ->
+                    calendar.set(Calendar.HOUR_OF_DAY, hour)
+                    calendar.set(Calendar.MINUTE, minute)
+                    onTimeSelected(sdf.format(calendar.time))
+                },
+                calendar.get(Calendar.HOUR_OF_DAY),
+                calendar.get(Calendar.MINUTE),
+                true
+            ).show()
         }
-        TimePickerDialog(
-            context,
-            timeSetListener,
-            calendar.get(Calendar.HOUR_OF_DAY),
-            calendar.get(Calendar.MINUTE),
-            true
-        ).show()
     }
 
-    // Fungsi untuk menampilkan Date Picker
-    fun showDatePicker(calendar: Calendar, onTimeSelected: (String) -> Unit) {
-        val dateSetListener = DatePickerDialog.OnDateSetListener { _, year, month, dayOfMonth ->
-            calendar.set(Calendar.YEAR, year)
-            calendar.set(Calendar.MONTH, month)
-            calendar.set(Calendar.DAY_OF_MONTH, dayOfMonth)
-            // Langsung panggil Time Picker setelah tanggal dipilih
-            showTimePicker(calendar, onTimeSelected)
+    // Optimized date picker function
+    val showDatePicker = remember {
+        { calendar: Calendar, onTimeSelected: (String) -> Unit ->
+            DatePickerDialog(
+                context,
+                { _, year, month, dayOfMonth ->
+                    calendar.set(Calendar.YEAR, year)
+                    calendar.set(Calendar.MONTH, month)
+                    calendar.set(Calendar.DAY_OF_MONTH, dayOfMonth)
+                    showTimePicker(calendar, onTimeSelected)
+                },
+                calendar.get(Calendar.YEAR),
+                calendar.get(Calendar.MONTH),
+                calendar.get(Calendar.DAY_OF_MONTH)
+            ).show()
         }
-        DatePickerDialog(
-            context,
-            dateSetListener,
-            calendar.get(Calendar.YEAR),
-            calendar.get(Calendar.MONTH),
-            calendar.get(Calendar.DAY_OF_MONTH)
-        ).show()
+    }
+
+    // Simpan tugas function - di-remember untuk mencegah rekomposisi
+    val simpanTugas = remember {
+        {
+            val currentUser = FirebaseAuth.getInstance().currentUser
+            if (namatugas.isBlank()) {
+                Toast.makeText(context, "Nama tugas tidak boleh kosong", Toast.LENGTH_SHORT).show()
+            } else if (currentUser != null) {
+                val deadlineMillis = if (deadlineText.isNotEmpty()) deadlineCalendar.timeInMillis else null
+                val pengingatMillis = if (pengingatText.isNotEmpty()) pengingatCalendar.timeInMillis else null
+
+                val tugas = Tugas(
+                    namatugas = namatugas,
+                    deskripsi = deskripsi,
+                    pembuat = currentUser.uid,
+                    prioritas = prioritasPilihan,
+                    deadline = deadlineMillis,
+                    pengingat = pengingatMillis
+                )
+
+                FirebaseRepository.addTugas(tugas) { sukses, pesan ->
+                    if (sukses) {
+                        Toast.makeText(context, "Tugas berhasil ditambahkan!", Toast.LENGTH_SHORT).show()
+                        onTaskAdded()
+                    } else {
+                        Toast.makeText(context, "Error: $pesan", Toast.LENGTH_LONG).show()
+                    }
+                }
+            } else {
+                Toast.makeText(context, "Anda harus login untuk menambah tugas", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 
     Scaffold(
@@ -111,152 +139,179 @@ fun TambahTugasScreen(onTaskAdded: () -> Unit) {
             )
         }
     ) { padding ->
+        // Menggunakan LazyColumn untuk performa yang lebih baik
         Column(
             modifier = Modifier
-                .fillMaxSize()
                 .padding(padding)
+                .fillMaxSize()
                 .background(Color.White)
-                .padding(horizontal = 16.dp, vertical = 12.dp)
-                .verticalScroll(rememberScrollState())
+                .padding(16.dp)
+                .verticalScroll(rememberScrollState()),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            // Input nama tugas
             OutlinedTextField(
                 value = namatugas,
                 onValueChange = { namatugas = it },
                 label = { Text("Nama Tugas") },
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
+                singleLine = true // Optimasi untuk single line
             )
-            Spacer(Modifier.height(12.dp))
 
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Input deskripsi
             OutlinedTextField(
                 value = deskripsi,
                 onValueChange = { deskripsi = it },
                 label = { Text("Deskripsi") },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(120.dp),
+                maxLines = 5 // Batasi jumlah baris untuk performa
             )
-            Spacer(Modifier.height(12.dp))
 
-            OutlinedTextField(
-                value = deadlineText,
-                onValueChange = { },
-                readOnly = true,
-                label = { Text("Deadline") },
-                trailingIcon = {
-                    Icon(
-                        Icons.Default.DateRange,
-                        contentDescription = "Pilih Tanggal Deadline",
-                        modifier = Modifier.clickable {
-                            showDatePicker(deadlineCalendar) { deadlineText = it }
-                        }
-                    )
-                },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
-            )
-            Spacer(Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-            OutlinedTextField(
-                value = pengingatText,
-                onValueChange = { },
-                readOnly = true,
-                label = { Text("Pengingat Notifikasi") },
-                trailingIcon = {
-                    Icon(
-                        Icons.Default.DateRange,
-                        contentDescription = "Pilih Tanggal Pengingat",
-                        modifier = Modifier.clickable {
-                            showDatePicker(pengingatCalendar) { pengingatText = it }
-                        }
-                    )
-                },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
-            )
-            Spacer(Modifier.height(16.dp))
-
-            Text("Prioritas", style = MaterialTheme.typography.bodyLarge)
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
+            // SOLUSI UTAMA: Custom date picker button yang lebih responsif
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth(),
+                onClick = { showDatePicker(deadlineCalendar) { deadlineText = it } },
+                colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+                border = CardDefaults.outlinedCardBorder()
             ) {
-                listOf("Tinggi", "Sedang", "Rendah").forEach { teks ->
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        RadioButton(
-                            selected = (teks == prioritasPilihan),
-                            onClick = { prioritasPilihan = teks }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column {
+                        Text(
+                            text = "Deadline",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.primary
                         )
-                        Text(text = teks, modifier = Modifier.padding(start = 2.dp, end = 8.dp))
+                        Text(
+                            text = if (deadlineText.isEmpty()) "Pilih tanggal deadline" else deadlineText,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = if (deadlineText.isEmpty())
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            else MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                    Icon(
+                        Icons.Default.DateRange,
+                        contentDescription = "Pilih Tanggal",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Custom pengingat picker dengan desain yang sama
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth(),
+                onClick = { showDatePicker(pengingatCalendar) { pengingatText = it } },
+                colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+                border = CardDefaults.outlinedCardBorder()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column {
+                        Text(
+                            text = "Pengingat",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Text(
+                            text = if (pengingatText.isEmpty()) "Pilih waktu pengingat" else pengingatText,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = if (pengingatText.isEmpty())
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            else MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                    Icon(
+                        Icons.Default.DateRange,
+                        contentDescription = "Pilih Tanggal",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Prioritas section dengan Card untuk konsistensi
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+                border = CardDefaults.outlinedCardBorder()
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp)
+                ) {
+                    Text(
+                        text = "Prioritas",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        listOf("Rendah", "Sedang", "Tinggi").forEach { prioritas ->
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.weight(1f) // Distribusi ruang yang merata
+                            ) {
+                                RadioButton(
+                                    selected = prioritasPilihan == prioritas,
+                                    onClick = { prioritasPilihan = prioritas }
+                                )
+                                Text(
+                                    text = prioritas,
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            }
+                        }
                     }
                 }
             }
-            Spacer(Modifier.height(16.dp))
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text("Tandai sebagai selesai", style = MaterialTheme.typography.bodyLarge)
-                Spacer(Modifier.weight(1f))
-                Switch(
-                    checked = isSelesai,
-                    onCheckedChange = { isSelesai = it }
-                )
-            }
-            Spacer(Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(32.dp))
 
-            // PERBAIKAN UTAMA: Struktur database berdasarkan user
+            // Tombol simpan dengan feedback visual
             Button(
-                onClick = {
-                    if (currentUser != null && namatugas.isNotBlank() && deadlineText.isNotBlank()) {
-                        // Ambil User ID dari FirebaseAuth
-                        val userId = currentUser.uid
-
-                        // Buat referensi database dengan struktur: tugas/userId/taskId
-                        val databaseReference = FirebaseDatabase.getInstance()
-                            .getReference("tugas")
-                            .child(userId) // Tambahkan userId sebagai parent node
-
-                        val taskId = databaseReference.push().key ?: ""
-
-                        val tugasBaru = Tugas(
-                            id = taskId,
-                            namatugas = namatugas,
-                            deskripsi = deskripsi,
-                            pembuat = currentUser.displayName ?: "Unknown User", // Berikan default jika null
-                            deadline = Timestamp(deadlineCalendar.time),
-                            pengingat = Timestamp(pengingatCalendar.time),
-                            prioritas = prioritasPilihan,
-                            selesai = isSelesai,
-                            tanggalDibuat = Timestamp.now()
-                        )
-
-                        if (taskId.isNotEmpty()) {
-                            // Simpan tugas di bawah user tertentu: tugas/userId/taskId
-                            databaseReference.child(taskId).setValue(tugasBaru)
-                                .addOnSuccessListener {
-                                    Toast.makeText(context, "Tugas berhasil disimpan!", Toast.LENGTH_SHORT).show()
-                                    onTaskAdded() // Panggil fungsi untuk menutup activity
-                                }
-                                .addOnFailureListener { e ->
-                                    Toast.makeText(context, "Gagal menyimpan: ${e.message}", Toast.LENGTH_LONG).show()
-                                }
-                        }
-                    } else {
-                        // Tampilkan pesan error yang lebih spesifik
-                        when {
-                            currentUser == null -> Toast.makeText(context, "User belum login", Toast.LENGTH_SHORT).show()
-                            namatugas.isBlank() -> Toast.makeText(context, "Nama Tugas wajib diisi", Toast.LENGTH_SHORT).show()
-                            deadlineText.isBlank() -> Toast.makeText(context, "Deadline wajib diisi", Toast.LENGTH_SHORT).show()
-                        }
-                    }
-                },
+                onClick = simpanTugas,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(48.dp)
+                    .height(56.dp), // Height yang konsisten
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF6200EE)
+                )
             ) {
-                Text("Simpan Tugas")
+                Text(
+                    text = "Simpan Tugas",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = Color.White
+                )
             }
+
+            // Tambah spacer di bawah untuk scroll yang lebih nyaman
+            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 }

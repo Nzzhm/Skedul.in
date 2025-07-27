@@ -1,14 +1,16 @@
 package com.aplikasi.skedulin
 
-import com.google.firebase.Timestamp
 data class Tugas(
     val id: String = "",
     val namatugas: String = "",
     val deskripsi: String = "",
-    val pembuat: String = "", // Diubah dari pembuatUid menjadi pembuat (String untuk nama)
-    val deadline: Timestamp? = null,
-    val pengingat: Timestamp? = null,
+    val pembuat: String = "",
+    val deadline: Long? = null,
+    val pengingat: Long? = null,
     val prioritas: String = "Sedang",
     val selesai: Boolean = false,
-    val tanggalDibuat: Timestamp = Timestamp.now()
+    // DAN INI (Gunakan System.currentTimeMillis() untuk default)
+    val tanggalDibuat: Long = System.currentTimeMillis(),
+    val tanggalSelesai: Long? = null,
+    val isCompletedLate: Boolean = false
 )

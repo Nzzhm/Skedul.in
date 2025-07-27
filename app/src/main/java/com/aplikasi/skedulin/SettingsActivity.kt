@@ -9,7 +9,7 @@ import com.google.firebase.FirebaseApp
 import com.google.firebase.auth.FirebaseAuth
 import kotlin.jvm.java
 
-class MainActivity : AppCompatActivity() {
+class SettingsActivity : AppCompatActivity() {
     private val firebaseAuth = FirebaseAuth.getInstance()
 
     private lateinit var textfullname : TextView
@@ -17,11 +17,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnLogout : Button
     private lateinit var btnTambahTugas: Button
     private lateinit var btnTampilTugas: Button
-
-    // Tambahan untuk statistik (optional)
-    private lateinit var textTotalTugas: TextView
-    private lateinit var textTugasSelesai: TextView
-    private lateinit var textTugasPending: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -34,18 +29,10 @@ class MainActivity : AppCompatActivity() {
         btnTambahTugas = findViewById(R.id.btn_tambahtugas)
         btnTampilTugas = findViewById(R.id.btn_tugas)
 
-        // Tambahan untuk statistik (optional - jika Anda ingin menambahkan ke layout)
-        // textTotalTugas = findViewById(R.id.text_total_tugas)
-        // textTugasSelesai = findViewById(R.id.text_tugas_selesai)
-        // textTugasPending = findViewById(R.id.text_tugas_pending)
-
         val firebaseUser = firebaseAuth.currentUser
         if (firebaseUser != null) {
             textfullname.text = firebaseUser.displayName ?: "No Name"
             textemail.text = firebaseUser.email ?: "No Email"
-
-            // Load statistik tugas (optional)
-            loadTugasStats()
         } else {
             startActivity(Intent(this, LoginActivity::class.java))
             finish()
@@ -57,32 +44,14 @@ class MainActivity : AppCompatActivity() {
 
         btnTampilTugas.setOnClickListener {
             startActivity(Intent(this, TampilTugas::class.java))
+
         }
+
 
         btnLogout.setOnClickListener {
             firebaseAuth.signOut()
             startActivity(Intent(this, LoginActivity::class.java))
             finish()
-        }
-    }
-
-    override fun onResume() {
-        super.onResume()
-        // Refresh statistik ketika kembali ke MainActivity
-        loadTugasStats()
-    }
-
-    private fun loadTugasStats() {
-        FirebaseRepository.getTugasStats { total, selesai, pending ->
-            runOnUiThread {
-                // Jika Anda menambahkan TextView untuk statistik di layout
-                // textTotalTugas?.text = "Total: $total"
-                // textTugasSelesai?.text = "Selesai: $selesai"
-                // textTugasPending?.text = "Pending: $pending"
-
-                // Atau bisa ditambahkan ke title bar
-                supportActionBar?.subtitle = "Total: $total | Selesai: $selesai | Pending: $pending"
-            }
         }
     }
 }
