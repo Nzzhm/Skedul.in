@@ -1,0 +1,234 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/alarm_gradient_background"
+    tools:context=".AlarmActivity">
+
+    <!-- Animated background circles -->
+    <View
+        android:id="@+id/circle1"
+        android:layout_width="200dp"
+        android:layout_height="200dp"
+        android:alpha="0.1"
+        android:background="@drawable/circle_background"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        android:layout_marginTop="-100dp"
+        android:layout_marginEnd="-100dp" />
+
+    <View
+        android:id="@+id/circle2"
+        android:layout_width="150dp"
+        android:layout_height="150dp"
+        android:alpha="0.08"
+        android:background="@drawable/circle_background"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        android:layout_marginStart="-75dp"
+        android:layout_marginBottom="-75dp" />
+
+    <!-- Main content container -->
+    <androidx.cardview.widget.CardView
+        android:id="@+id/main_card"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="24dp"
+        app:cardCornerRadius="24dp"
+        app:cardElevation="12dp"
+        app:cardBackgroundColor="@color/card_background"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="32dp"
+            android:gravity="center">
+
+            <!-- Animated alarm icon container -->
+            <androidx.cardview.widget.CardView
+                android:id="@+id/icon_container"
+                android:layout_width="140dp"
+                android:layout_height="140dp"
+                android:layout_marginBottom="24dp"
+                app:cardCornerRadius="70dp"
+                app:cardElevation="8dp"
+                app:cardBackgroundColor="@color/icon_background">
+
+                <ImageView
+                    android:id="@+id/iv_alarm_icon"
+                    android:layout_width="80dp"
+                    android:layout_height="80dp"
+                    android:layout_gravity="center"
+                    android:src="@drawable/ic_alarm"
+                    android:contentDescription="Alarm Icon"
+                    android:tint="@color/icon_tint" />
+
+            </androidx.cardview.widget.CardView>
+
+            <!-- Current time display -->
+            <TextView
+                android:id="@+id/tv_current_time"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="8dp"
+                android:text="12:34"
+                android:textColor="@color/current_time_color"
+                android:textSize="48sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.1" />
+
+            <!-- Title -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="4dp"
+                android:text="PENGINGAT TUGAS"
+                android:textColor="@color/title_color"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.15"
+                android:gravity="center" />
+
+            <!-- Alarm time -->
+            <TextView
+                android:id="@+id/tv_task_time"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="24dp"
+                android:text="Waktu: 00:00"
+                android:textColor="@color/subtitle_color"
+                android:textSize="14sp" />
+
+            <!-- Task name card -->
+            <androidx.cardview.widget.CardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="32dp"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="4dp"
+                app:cardBackgroundColor="@color/task_card_background">
+
+                <TextView
+                    android:id="@+id/tv_task_name"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:padding="20dp"
+                    android:text="Nama Tugas"
+                    android:textColor="@color/task_text_color"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:gravity="center"
+                    android:minLines="2" />
+
+            </androidx.cardview.widget.CardView>
+
+            <!-- Button container -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center"
+                android:layout_marginBottom="16dp">
+
+                <!-- Snooze button -->
+                <androidx.cardview.widget.CardView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginEnd="8dp"
+                    app:cardCornerRadius="28dp"
+                    app:cardElevation="6dp"
+                    app:cardBackgroundColor="@color/snooze_background">
+
+                    <Button
+                        android:id="@+id/btn_snooze"
+                        android:layout_width="match_parent"
+                        android:layout_height="56dp"
+                        android:background="@android:color/transparent"
+                        android:text="SNOOZE\n5 Menit"
+                        android:textColor="@color/snooze_text_color"
+                        android:textSize="13sp"
+                        android:textStyle="bold"
+                        android:gravity="center"
+                        android:letterSpacing="0.1"
+                        style="?android:attr/borderlessButtonStyle" />
+
+                </androidx.cardview.widget.CardView>
+
+                <!-- Dismiss button -->
+                <androidx.cardview.widget.CardView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="8dp"
+                    app:cardCornerRadius="28dp"
+                    app:cardElevation="6dp"
+                    app:cardBackgroundColor="@color/dismiss_background">
+
+                    <Button
+                        android:id="@+id/btn_dismiss"
+                        android:layout_width="match_parent"
+                        android:layout_height="56dp"
+                        android:background="@android:color/transparent"
+                        android:text="TUTUP"
+                        android:textColor="@color/dismiss_text_color"
+                        android:textSize="14sp"
+                        android:textStyle="bold"
+                        android:gravity="center"
+                        android:letterSpacing="0.1"
+                        style="?android:attr/borderlessButtonStyle" />
+
+                </androidx.cardview.widget.CardView>
+
+            </LinearLayout>
+
+            <!-- Swipe hint -->
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center"
+                android:alpha="0.7">
+
+                <ImageView
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:layout_marginEnd="8dp"
+                    android:src="@drawable/ic_swipe"
+                    android:tint="@color/hint_color" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Geser atau tekan tombol untuk menghentikan"
+                    android:textColor="@color/hint_color"
+                    android:textSize="11sp"
+                    android:gravity="center" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+    </androidx.cardview.widget.CardView>
+
+    <!-- Pulse animation view for visual feedback -->
+    <View
+        android:id="@+id/pulse_view"
+        android:layout_width="300dp"
+        android:layout_height="300dp"
+        android:background="@drawable/pulse_background"
+        android:alpha="0.3"
+        app:layout_constraintTop_toTopOf="@id/main_card"
+        app:layout_constraintBottom_toBottomOf="@id/main_card"
+        app:layout_constraintStart_toStartOf="@id/main_card"
+        app:layout_constraintEnd_toEndOf="@id/main_card" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>
