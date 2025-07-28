@@ -3,4 +3,50 @@
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
     <color name="primary">#80D8FF</color>
+    <color name="alarm_background">#FF1744</color>
+    <color name="alarm_title">#FFFFFF</color>
+    <color name="alarm_task_text">#FFFFFF</color>
+    <color name="navbar">#FFD0CA</color>
+    <color name="alarm_icon">#FFFFFF</color>
+    <color name="warna_button">#392AAB</color>
+    <color name="snooze_backgroundd">#FF9800</color>
+    <color name="snooze_text">#FFFFFF</color>
+    <color name="dismiss_backgroundd">#4CAF50</color>
+    <color name="dismiss_text">#FFFFFF</color>
+    <color name="oren">#FF9500</color>
+
+    <color name="primary_text">#212121</color>
+    <color name="secondary_text">#4A12C5</color>
+    <color name="input_background">#ECECEC</color>
+
+    <color name="alarm_overlay">#80000000</color>
+    <color name="alarm_card_background">#FFFFFF</color>
+    <color name="alarm_icon_background">#F8F9FA</color>
+    <color name="alarm_title_modern">#212529</color>
+    <color name="alarm_time_modern">#495057</color>
+    <color name="snooze_button_background">#FFF3CD</color>
+    <color name="dismiss_button_background">#D4EDDA</color>
+
+    <color name="card_background">#1A1A2E</color>
+    <color name="icon_background">#FF6B35</color>
+    <color name="icon_tint">#FFFFFF</color>
+
+    <color name="current_time_color">#FFFFFF</color>
+    <color name="title_color">#FF6B35</color>
+    <color name="subtitle_color">#B0B0C4</color>
+
+    <color name="task_card_background">#2D2D42</color>
+    <color name="task_text_color">#FFFFFF</color>
+
+    <color name="snooze_background">#4A4A6A</color>
+    <color name="snooze_text_color">#FFFFFF</color>
+
+    <color name="dismiss_background">#FF6B35</color>
+    <color name="dismiss_text_color">#FFFFFF</color>
+
+    <color name="hint_color">#8A8A9E</color>
+
+    <!-- Gradient colors -->
+    <color name="gradient_start">#0F0F23</color>
+    <color name="gradient_end">#1A1A2E</color>
 </resources>

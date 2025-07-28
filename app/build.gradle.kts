@@ -73,4 +73,13 @@ dependencies {
     implementation (libs.androidx.lifecycle.viewmodel.ktx)
     implementation (libs.androidx.lifecycle.runtime.ktx.v241)
     implementation (libs.kotlinx.coroutines.android)
+
+        implementation (libs.androidx.work.runtime.ktx)
+
+    // Notification compatibility
+    implementation (libs.androidx.core.ktx.v1120)
+
+    // Jika belum ada, tambahkan juga:
+    implementation (libs.androidx.activity.ktx)
+    implementation (libs.androidx.appcompat.v161)
 }

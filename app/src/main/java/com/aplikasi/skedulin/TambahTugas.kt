@@ -1,7 +1,11 @@
 package com.aplikasi.skedulin
 
+import android.app.AlarmManager
 import android.app.DatePickerDialog
+import android.app.PendingIntent
 import android.app.TimePickerDialog
+import android.content.Context
+import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -60,6 +64,38 @@ fun TambahTugasScreen(onTaskAdded: () -> Unit) {
     // DateFormat - dibuat sekali dan di-remember
     val sdf = remember { SimpleDateFormat("d MMMM yyyy, HH:mm", Locale.getDefault()) }
 
+    // TAMBAHAN: Function untuk mengatur alarm pengingat
+    val setAlarmForTask = remember {
+        { tugasId: String, pengingatTime: Long, taskName: String ->
+            try {
+                val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+                val intent = Intent(context, AlarmReceiver::class.java).apply {
+                    putExtra("taskId", tugasId)
+                    putExtra("taskName", taskName)
+                    putExtra("notificationType", "REMINDER")
+                }
+
+                val pendingIntent = PendingIntent.getBroadcast(
+                    context,
+                    tugasId.hashCode(), // Unique request code
+                    intent,
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                )
+
+                // Set alarm exact (API 19+)
+                alarmManager.setExactAndAllowWhileIdle(
+                    AlarmManager.RTC_WAKEUP,
+                    pengingatTime,
+                    pendingIntent
+                )
+
+                Toast.makeText(context, "Pengingat berhasil diatur", Toast.LENGTH_SHORT).show()
+            } catch (e: Exception) {
+                Toast.makeText(context, "Gagal mengatur pengingat: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
     // Optimized time picker function - menghindari recreate dialog
     val showTimePicker = remember {
         { calendar: Calendar, onTimeSelected: (String) -> Unit ->
@@ -95,7 +131,7 @@ fun TambahTugasScreen(onTaskAdded: () -> Unit) {
         }
     }
 
-    // Simpan tugas function - di-remember untuk mencegah rekomposisi
+    // Simpan tugas function - DIUPDATE untuk menambahkan alarm
     val simpanTugas = remember {
         {
             val currentUser = FirebaseAuth.getInstance().currentUser
@@ -117,6 +153,38 @@ fun TambahTugasScreen(onTaskAdded: () -> Unit) {
                 FirebaseRepository.addTugas(tugas) { sukses, pesan ->
                     if (sukses) {
                         Toast.makeText(context, "Tugas berhasil ditambahkan!", Toast.LENGTH_SHORT).show()
+
+                        // TAMBAHAN: Set alarm jika ada pengingat
+                        if (pengingatMillis != null && pengingatMillis > System.currentTimeMillis()) {
+                            setAlarmForTask(tugas.id, pengingatMillis, namatugas)
+                        }
+
+                        // TAMBAHAN: Set alarm untuk H-1 deadline jika ada
+                        if (deadlineMillis != null) {
+                            val oneDayBefore = deadlineMillis - (24 * 60 * 60 * 1000) // H-1
+                            if (oneDayBefore > System.currentTimeMillis()) {
+                                val intent = Intent(context, AlarmReceiver::class.java).apply {
+                                    putExtra("taskId", tugas.id)
+                                    putExtra("taskName", namatugas)
+                                    putExtra("notificationType", "DEADLINE_REMINDER")
+                                }
+
+                                val pendingIntent = PendingIntent.getBroadcast(
+                                    context,
+                                    "${tugas.id}_deadline".hashCode(),
+                                    intent,
+                                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                                )
+
+                                val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+                                alarmManager.setExactAndAllowWhileIdle(
+                                    AlarmManager.RTC_WAKEUP,
+                                    oneDayBefore,
+                                    pendingIntent
+                                )
+                            }
+                        }
+
                         onTaskAdded()
                     } else {
                         Toast.makeText(context, "Error: $pesan", Toast.LENGTH_LONG).show()
