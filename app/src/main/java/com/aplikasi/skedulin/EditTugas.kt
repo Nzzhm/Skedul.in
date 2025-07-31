@@ -3,24 +3,39 @@ package com.aplikasi.skedulin
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
 import android.os.Bundle
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.google.firebase.auth.FirebaseAuth
 import java.text.SimpleDateFormat
 import java.util.*
@@ -42,7 +57,7 @@ class EditTugas : ComponentActivity() {
             MaterialTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
+                    color = Color(0xFFF8F9FA)
                 ) {
                     EditTugasScreen(
                         tugasId = tugasId,
@@ -81,6 +96,7 @@ fun EditTugasScreen(
     var deskripsi by remember { mutableStateOf(initialDeskripsi) }
     var prioritasPilihan by remember { mutableStateOf(initialPrioritas) }
     var selesai by remember { mutableStateOf(initialSelesai) }
+    var isLoading by remember { mutableStateOf(false) }
 
     // Calendar instances
     val deadlineCalendar = remember { Calendar.getInstance() }
@@ -107,6 +123,25 @@ fun EditTugasScreen(
             } else ""
         )
     }
+
+    // Gradient colors
+    val gradientColors = listOf(
+        Color(0xFF667EEA),
+        Color(0xFF764BA2)
+    )
+
+    // Priority colors
+    val priorityColors = mapOf(
+        "Rendah" to Color(0xFF10B981),
+        "Sedang" to Color(0xFFF59E0B),
+        "Tinggi" to Color(0xFFEF4444)
+    )
+
+    // Animation states
+    val scale by animateFloatAsState(
+        targetValue = if (isLoading) 0.95f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy)
+    )
 
     // Time picker function
     val showTimePicker = remember {
@@ -150,6 +185,7 @@ fun EditTugasScreen(
             if (namatugas.isBlank()) {
                 Toast.makeText(context, "Nama tugas tidak boleh kosong", Toast.LENGTH_SHORT).show()
             } else if (currentUser != null) {
+                isLoading = true
                 val deadlineMillis = if (deadlineText.isNotEmpty()) deadlineCalendar.timeInMillis else null
                 val pengingatMillis = if (pengingatText.isNotEmpty()) pengingatCalendar.timeInMillis else null
 
@@ -162,12 +198,42 @@ fun EditTugasScreen(
                     deadline = deadlineMillis,
                     pengingat = pengingatMillis,
                     selesai = selesai,
-                    tanggalDibuat = System.currentTimeMillis() // Keep original creation time in real implementation
+                    tanggalDibuat = 0L
                 )
 
                 FirebaseRepository.updateTugas(updatedTugas) { sukses, pesan ->
+                    isLoading = false
                     if (sukses) {
                         Toast.makeText(context, "Tugas berhasil diperbarui!", Toast.LENGTH_SHORT).show()
+
+                        // Batalkan alarm lama terlebih dahulu
+                        NotificationHelper.cancelTaskReminder(context, updatedTugas.id)
+                        Log.d("EditTugas", "Membatalkan alarm lama untuk tugas ID: ${updatedTugas.id}")
+
+                        // Set pengingat baru jika ada
+                        updatedTugas.pengingat?.let { waktuPengingat ->
+                            if (waktuPengingat > System.currentTimeMillis()) {
+                                Log.d("EditTugas", "Menyetel pengingat baru pada: $waktuPengingat")
+                                NotificationHelper.setTaskReminder(
+                                    context = context,
+                                    taskId = updatedTugas.id,
+                                    taskName = updatedTugas.namatugas,
+                                    reminderTime = waktuPengingat
+                                )
+                            }
+                        }
+
+                        // Set deadline reminder baru jika ada
+                        updatedTugas.deadline?.let { waktuDeadline ->
+                            Log.d("EditTugas", "Menyetel deadline reminder baru untuk deadline: $waktuDeadline")
+                            NotificationHelper.setDeadlineReminder(
+                                context = context,
+                                taskId = updatedTugas.id,
+                                taskName = updatedTugas.namatugas,
+                                deadlineTime = waktuDeadline
+                            )
+                        }
+
                         onTaskUpdated()
                     } else {
                         Toast.makeText(context, "Error: $pesan", Toast.LENGTH_LONG).show()
@@ -179,7 +245,7 @@ fun EditTugasScreen(
         }
     }
 
-    // Clear deadline function
+    // Clear functions
     val clearDeadline = remember {
         {
             deadlineText = ""
@@ -187,7 +253,6 @@ fun EditTugasScreen(
         }
     }
 
-    // Clear pengingat function
     val clearPengingat = remember {
         {
             pengingatText = ""
@@ -195,272 +260,406 @@ fun EditTugasScreen(
         }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Edit Tugas") },
-                navigationIcon = {
-                    IconButton(onClick = onBackPressed) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(
+                        Color(0xFFF8F9FA),
+                        Color(0xFFE9ECEF)
+                    )
+                )
+            )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+        ) {
+            // Modern Header with Back Button
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        Brush.horizontalGradient(gradientColors),
+                        shape = RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp)
+                    )
+                    .padding(24.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(
+                        onClick = onBackPressed,
+                        modifier = Modifier
+                            .background(
+                                Color.White.copy(alpha = 0.2f),
+                                CircleShape
+                            )
+                    ) {
                         Icon(
                             Icons.Default.ArrowBack,
                             contentDescription = "Kembali",
                             tint = Color.White
                         )
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color(0xFF6200EE),
-                    titleContentColor = Color.White
+
+                    Column(
+                        modifier = Modifier.padding(start = 16.dp)
+                    ) {
+                        Text(
+                            text = "Edit Tugas",
+                            fontSize = 28.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                        Text(
+                            text = "Perbarui detail tugas Anda",
+                            fontSize = 16.sp,
+                            color = Color.White.copy(alpha = 0.8f),
+                            modifier = Modifier.padding(top = 4.dp)
+                        )
+                    }
+                }
+            }
+
+            Column(
+                modifier = Modifier
+                    .padding(20.dp)
+                    .scale(scale),
+                verticalArrangement = Arrangement.spacedBy(20.dp)
+            ) {
+                // Task Status Card
+                ModernStatusCard(
+                    title = "Status Tugas",
+                    isCompleted = selesai,
+                    onStatusChanged = { selesai = it }
+                )
+
+                // Modern Input Fields
+                ModernInputField(
+                    value = namatugas,
+                    onValueChange = { namatugas = it },
+                    label = "Nama Tugas",
+                    icon = ImageVector.vectorResource(id = R.drawable.ic_tugas),
+                    placeholder = "Masukkan nama tugas..."
+                )
+
+                ModernInputField(
+                    value = deskripsi,
+                    onValueChange = { deskripsi = it },
+                    label = "Deskripsi",
+                    icon = ImageVector.vectorResource(id = R.drawable.ic_deskripsi),
+                    placeholder = "Deskripsikan tugas Anda...",
+                    maxLines = 4,
+                    minHeight = 120.dp
+                )
+
+                // Modern Date Time Picker with Clear Option
+                ModernDateTimePickerWithClear(
+                    title = "Deadline",
+                    subtitle = "Kapan tugas ini harus selesai?",
+                    selectedTime = deadlineText,
+                    icon = ImageVector.vectorResource(id = R.drawable.ic_schedule),
+                    iconColor = Color(0xFFEF4444),
+                    onClick = { showDatePicker(deadlineCalendar) { deadlineText = it } },
+                    onClear = clearDeadline
+                )
+
+                ModernDateTimePickerWithClear(
+                    title = "Pengingat",
+                    subtitle = "Kapan Anda ingin diingatkan?",
+                    selectedTime = pengingatText,
+                    icon = ImageVector.vectorResource(id = R.drawable.ic_alarm),
+                    iconColor = Color(0xFF8B5CF6),
+                    onClick = { showDatePicker(pengingatCalendar) { pengingatText = it } },
+                    onClear = clearPengingat
+                )
+
+                // Modern Priority Selector
+                ModernPrioritySelector(
+                    selectedPriority = prioritasPilihan,
+                    onPrioritySelected = { prioritasPilihan = it },
+                    priorityColors = priorityColors
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Modern Action Buttons
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    // Cancel Button
+                    Card(
+                        modifier = Modifier
+                            .weight(1f)
+                            .shadow(4.dp, RoundedCornerShape(16.dp))
+                            .clickable(enabled = !isLoading) { onBackPressed() },
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color.White),
+                        border = CardDefaults.outlinedCardBorder().copy(
+                            brush = Brush.linearGradient(listOf(Color(0xFFE5E7EB), Color(0xFFE5E7EB)))
+                        )
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = null,
+                                    tint = Color(0xFF6B7280),
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "Batal",
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color(0xFF374151)
+                                )
+                            }
+                        }
+                    }
+
+                    // Update Button
+                    Card(
+                        modifier = Modifier
+                            .weight(1f)
+                            .shadow(8.dp, RoundedCornerShape(16.dp))
+                            .clickable(enabled = !isLoading) { updateTugas() },
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color.Transparent)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(
+                                    brush = Brush.horizontalGradient(gradientColors),
+                                    shape = RoundedCornerShape(16.dp)
+                                )
+                                .padding(16.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                if (isLoading) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(18.dp),
+                                        color = Color.White,
+                                        strokeWidth = 2.dp
+                                    )
+                                } else {
+                                    Icon(
+                                        imageVector = Icons.Default.CheckCircle,
+                                        contentDescription = null,
+                                        tint = Color.White,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                }
+
+                                Text(
+                                    text = if (isLoading) "Memperbarui..." else "Perbarui",
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color.White
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+            }
+        }
+    }
+}
+
+@Composable
+fun ModernStatusCard(
+    title: String,
+    isCompleted: Boolean,
+    onStatusChanged: (Boolean) -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(4.dp, RoundedCornerShape(16.dp)),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isCompleted) Color(0xFFF0FDF4) else Color.White
+        )
+    ) {
+        Row(
+            modifier = Modifier.padding(20.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .background(
+                        brush = Brush.radialGradient(
+                            colors = if (isCompleted) {
+                                listOf(
+                                    Color(0xFF10B981).copy(alpha = 0.2f),
+                                    Color(0xFF10B981).copy(alpha = 0.1f)
+                                )
+                            } else {
+                                listOf(
+                                    Color(0xFF6B7280).copy(alpha = 0.2f),
+                                    Color(0xFF6B7280).copy(alpha = 0.1f)
+                                )
+                            }
+                        ),
+                        shape = CircleShape
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = if (isCompleted) {
+                        Icons.Default.CheckCircle
+                    } else {
+                        ImageVector.vectorResource(id = R.drawable.radio_button_unchecked)
+                    },
+                    contentDescription = null,
+                    tint = if (isCompleted) Color(0xFF10B981) else Color(0xFF6B7280),
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(start = 16.dp)
+            ) {
+                Text(
+                    text = title,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color(0xFF1F2937)
+                )
+                Text(
+                    text = if (isCompleted) "Tugas telah selesai" else "Tugas belum selesai",
+                    fontSize = 14.sp,
+                    color = if (isCompleted) Color(0xFF059669) else Color(0xFF6B7280),
+                    fontWeight = if (isCompleted) FontWeight.Medium else FontWeight.Normal,
+                    modifier = Modifier.padding(top = 2.dp)
+                )
+            }
+
+            Switch(
+                checked = isCompleted,
+                onCheckedChange = onStatusChanged,
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = Color.White,
+                    checkedTrackColor = Color(0xFF10B981),
+                    uncheckedThumbColor = Color.White,
+                    uncheckedTrackColor = Color(0xFFE5E7EB)
                 )
             )
         }
-    ) { padding ->
+    }
+}
+
+@Composable
+fun ModernDateTimePickerWithClear(
+    title: String,
+    subtitle: String,
+    selectedTime: String,
+    icon: ImageVector,
+    iconColor: Color,
+    onClick: () -> Unit,
+    onClear: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(4.dp, RoundedCornerShape(16.dp)),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White)
+    ) {
         Column(
-            modifier = Modifier
-                .padding(padding)
-                .fillMaxSize()
-                .background(Color.White)
-                .padding(16.dp)
-                .verticalScroll(rememberScrollState()),
-            horizontalAlignment = Alignment.CenterHorizontally
+            modifier = Modifier.padding(20.dp)
         ) {
-            // Input nama tugas
-            OutlinedTextField(
-                value = namatugas,
-                onValueChange = { namatugas = it },
-                label = { Text("Nama Tugas") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Input deskripsi
-            OutlinedTextField(
-                value = deskripsi,
-                onValueChange = { deskripsi = it },
-                label = { Text("Deskripsi") },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(120.dp),
-                maxLines = 5
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Status selesai
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = Color.Transparent),
-                border = CardDefaults.outlinedCardBorder()
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        text = "Status Tugas",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Checkbox(
-                            checked = selesai,
-                            onCheckedChange = { selesai = it }
-                        )
-                        Text(
-                            text = if (selesai) "Selesai" else "Belum Selesai",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Deadline picker with clear option
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = Color.Transparent),
-                border = CardDefaults.outlinedCardBorder()
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "Deadline",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                            Text(
-                                text = if (deadlineText.isEmpty()) "Pilih tanggal deadline" else deadlineText,
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = if (deadlineText.isEmpty())
-                                    MaterialTheme.colorScheme.onSurfaceVariant
-                                else MaterialTheme.colorScheme.onSurface
-                            )
-                        }
-                        Row {
-                            IconButton(
-                                onClick = { showDatePicker(deadlineCalendar) { deadlineText = it } }
-                            ) {
-                                Icon(
-                                    Icons.Default.DateRange,
-                                    contentDescription = "Pilih Tanggal",
-                                    tint = MaterialTheme.colorScheme.primary
-                                )
-                            }
-                            if (deadlineText.isNotEmpty()) {
-                                TextButton(onClick = clearDeadline) {
-                                    Text("Hapus", color = Color.Red)
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Pengingat picker with clear option
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = Color.Transparent),
-                border = CardDefaults.outlinedCardBorder()
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "Pengingat",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                            Text(
-                                text = if (pengingatText.isEmpty()) "Pilih waktu pengingat" else pengingatText,
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = if (pengingatText.isEmpty())
-                                    MaterialTheme.colorScheme.onSurfaceVariant
-                                else MaterialTheme.colorScheme.onSurface
-                            )
-                        }
-                        Row {
-                            IconButton(
-                                onClick = { showDatePicker(pengingatCalendar) { pengingatText = it } }
-                            ) {
-                                Icon(
-                                    Icons.Default.DateRange,
-                                    contentDescription = "Pilih Tanggal",
-                                    tint = MaterialTheme.colorScheme.primary
-                                )
-                            }
-                            if (pengingatText.isNotEmpty()) {
-                                TextButton(onClick = clearPengingat) {
-                                    Text("Hapus", color = Color.Red)
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Prioritas section
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = Color.Transparent),
-                border = CardDefaults.outlinedCardBorder()
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp)
-                ) {
-                    Text(
-                        text = "Prioritas",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly
-                    ) {
-                        listOf("Rendah", "Sedang", "Tinggi").forEach { prioritas ->
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                RadioButton(
-                                    selected = prioritasPilihan == prioritas,
-                                    onClick = { prioritasPilihan = prioritas }
-                                )
-                                Text(
-                                    text = prioritas,
-                                    style = MaterialTheme.typography.bodyMedium
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(32.dp))
-
-            // Tombol update dan batal
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                OutlinedButton(
-                    onClick = onBackPressed,
+                Box(
                     modifier = Modifier
-                        .weight(1f)
-                        .height(56.dp),
-                    shape = RoundedCornerShape(12.dp)
+                        .size(48.dp)
+                        .background(
+                            brush = Brush.radialGradient(
+                                colors = listOf(
+                                    iconColor.copy(alpha = 0.2f),
+                                    iconColor.copy(alpha = 0.1f)
+                                )
+                            ),
+                            shape = CircleShape
+                        ),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = "Batal",
-                        style = MaterialTheme.typography.titleMedium
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = iconColor,
+                        modifier = Modifier.size(24.dp)
                     )
                 }
 
-                Button(
-                    onClick = updateTugas,
+                Column(
                     modifier = Modifier
                         .weight(1f)
-                        .height(56.dp),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF6200EE)
-                    )
+                        .padding(start = 16.dp)
                 ) {
                     Text(
-                        text = "Perbarui",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = Color.White
+                        text = title,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color(0xFF1F2937)
                     )
+                    Text(
+                        text = if (selectedTime.isEmpty()) subtitle else selectedTime,
+                        fontSize = 14.sp,
+                        color = if (selectedTime.isEmpty()) Color(0xFF6B7280) else Color(0xFF059669),
+                        fontWeight = if (selectedTime.isEmpty()) FontWeight.Normal else FontWeight.Medium,
+                        modifier = Modifier.padding(top = 2.dp)
+                    )
+                }
+
+                Row {
+                    IconButton(onClick = onClick) {
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = "Edit",
+                            tint = Color(0xFF667EEA),
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+
+                    if (selectedTime.isNotEmpty()) {
+                        IconButton(onClick = onClear) {
+                            Icon(
+                                imageVector = Icons.Default.Clear,
+                                contentDescription = "Hapus",
+                                tint = Color(0xFFEF4444),
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
                 }
             }
-
-            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 }

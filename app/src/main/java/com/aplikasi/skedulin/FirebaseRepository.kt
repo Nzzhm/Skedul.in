@@ -1,6 +1,8 @@
 package com.aplikasi.skedulin
 
+import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.UserProfileChangeRequest
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
@@ -11,6 +13,62 @@ object FirebaseRepository {
     private fun getUserTugasReference() = FirebaseDatabase.getInstance()
         .getReference("tugas")
         .child(FirebaseAuth.getInstance().currentUser?.uid ?: "")
+
+    // Fungsi untuk update username/display name
+    fun updateUserDisplayName(newDisplayName: String, onComplete: (Boolean, String?) -> Unit) {
+        val currentUser = FirebaseAuth.getInstance().currentUser
+        if (currentUser != null) {
+            val profileUpdates = UserProfileChangeRequest.Builder()
+                .setDisplayName(newDisplayName)
+                .build()
+
+            currentUser.updateProfile(profileUpdates)
+                .addOnCompleteListener { task ->
+                    if (task.isSuccessful) {
+                        onComplete(true, "Username berhasil diperbarui")
+                    } else {
+                        onComplete(false, "Gagal memperbarui username: ${task.exception?.message}")
+                    }
+                }
+        } else {
+            onComplete(false, "User belum login")
+        }
+    }
+
+    // Fungsi baru untuk update password
+    fun updateUserPassword(currentPassword: String, newPassword: String, onComplete: (Boolean, String?) -> Unit) {
+        val currentUser = FirebaseAuth.getInstance().currentUser
+        if (currentUser != null && currentUser.email != null) {
+            // Re-authenticate user dengan password saat ini
+            val credential = EmailAuthProvider.getCredential(currentUser.email!!, currentPassword)
+
+            currentUser.reauthenticate(credential)
+                .addOnCompleteListener { reauthTask ->
+                    if (reauthTask.isSuccessful) {
+                        // Jika re-authentication berhasil, update password
+                        currentUser.updatePassword(newPassword)
+                            .addOnCompleteListener { updateTask ->
+                                if (updateTask.isSuccessful) {
+                                    onComplete(true, "Password berhasil diubah")
+                                } else {
+                                    onComplete(false, "Gagal mengubah password: ${updateTask.exception?.message}")
+                                }
+                            }
+                    } else {
+                        // Re-authentication gagal, password saat ini salah
+                        onComplete(false, "Password saat ini salah")
+                    }
+                }
+        } else {
+            onComplete(false, "User belum login atau email tidak ditemukan")
+        }
+    }
+
+    // Fungsi untuk mendapatkan informasi user saat ini
+    fun getCurrentUserInfo(): Pair<String?, String?> {
+        val currentUser = FirebaseAuth.getInstance().currentUser
+        return Pair(currentUser?.displayName, currentUser?.email)
+    }
 
     fun addTugas(tugas: Tugas, onComplete: (Boolean, String?) -> Unit = { _, _ -> }) {
         val currentUser = FirebaseAuth.getInstance().currentUser
@@ -110,8 +168,6 @@ object FirebaseRepository {
             onDataChange(completedTugas)
         }
     }
-
-
 
     fun updateTugas(tugas: Tugas, onComplete: (Boolean, String?) -> Unit = { _, _ -> }) {
         val currentUser = FirebaseAuth.getInstance().currentUser

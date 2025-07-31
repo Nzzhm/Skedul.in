@@ -1,255 +1,30 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:padding="24dp"
-    android:background="#F5F5F5">
+    tools:context=".SplashActivity"
+    android:background="@color/white">
 
-    <!-- Main Content ScrollView -->
-    <ScrollView
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1">
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:padding="20dp">
-
-            <!-- Header Section -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:layout_marginBottom="24dp">
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical">
-
-                    <TextView
-                        android:id="@+id/text_greeting"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Hello 👋"
-                        android:textSize="16sp"
-                        android:textColor="#666666"
-                        android:fontFamily="sans-serif" />
-
-                    <TextView
-                        android:id="@+id/text_user_name"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Nama user"
-                        android:textSize="24sp"
-                        android:textColor="@color/warna_button"
-                        android:textStyle="bold"
-                        android:fontFamily="sans-serif"
-                        android:layout_marginTop="4dp" />
-
-                    <TextView
-                        android:id="@+id/text_user_email"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="user@email.com"
-                        android:textSize="12sp"
-                        android:textColor="#999999"
-                        android:layout_marginTop="2dp" />
-
-                </LinearLayout>
-
-
-
-            </LinearLayout>
-
-            <!-- Today's Task Card -->
-
-            <!-- Task List Section -->
-
-            <RelativeLayout
-                android:id="@+id/card_today_task"
-                android:layout_width="match_parent"
-                android:layout_height="150dp"
-                android:layout_marginBottom="24dp"
-                android:background="@drawable/card_today_task_normal"
-                android:clickable="true"
-                android:focusable="true"
-                android:padding="20dp">
-
-                <LinearLayout
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical">
-
-                    <TextView
-                        android:id="@+id/text_today_task_title"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:fontFamily="sans-serif"
-                        android:text="Senin"
-                        android:textColor="#FFFFFF"
-                        android:textSize="18sp"
-                        android:textStyle="bold" />
-
-                    <TextView
-                        android:id="@+id/text_today_task_date"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="4dp"
-                        android:alpha="0.8"
-                        android:text="Due Date"
-                        android:textColor="#FFFFFF"
-                        android:textSize="12sp" />
-
-                    <TextView
-                        android:id="@+id/text_today_task_count"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:text="23 Oktober, 2025"
-                        android:textColor="#FFFFFF"
-                        android:textSize="14sp" />
-
-                    <Button
-                        android:id="@+id/btn_view_all_tasks"
-                        android:layout_width="wrap_content"
-                        android:layout_height="32dp"
-                        android:layout_marginTop="8dp"
-                        android:backgroundTint="@color/oren"
-                        android:minHeight="0dp"
-                        android:paddingHorizontal="12dp"
-                        android:text="Hari ini ada dua tugas"
-                        android:textColor="#FFFFFF"
-                        android:textSize="10sp" />
-                </LinearLayout>
-
-                <ImageView
-                    android:layout_width="25dp"
-                    android:layout_height="25dp"
-                    android:src="@drawable/bubble_blue"
-                    android:layout_alignParentTop="true"
-                    android:layout_alignParentEnd="true"
-                    android:layout_marginTop="10dp"
-                    android:layout_marginEnd="20dp" />
-
-                <ImageView
-                    android:layout_width="15dp"
-                    android:layout_height="15dp"
-                    android:src="@drawable/bubble_orange"
-                    android:layout_alignParentTop="true"
-                    android:layout_alignParentEnd="true"
-                    android:layout_marginTop="25dp"
-                    android:layout_marginEnd="55dp" />
-
-                <ImageView
-                    android:layout_width="35dp"
-                    android:layout_height="35dp"
-                    android:src="@drawable/bubble_green"
-                    android:layout_alignParentTop="true"
-                    android:layout_alignParentEnd="true"
-                    android:layout_marginTop="45dp"
-                    android:layout_marginEnd="25dp" />
-
-            </RelativeLayout>
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:layout_marginBottom="16dp">
-
-                <TextView
-                    android:id="@+id/text_tugas_hari_ini"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="TUGAS HARI INI "
-                    android:textSize="17sp"
-                    android:textColor="@color/oren"
-                    android:textStyle="bold"
-                    android:fontFamily="sans-serif" />
-
-            </LinearLayout>
-
-            <!-- RecyclerView for Tasks -->
-            <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/recycler_view_tasks"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="24dp" />
-
-            <!-- View More Tasks Button -->
-            <Button
-                android:id="@+id/btn_cek_tugas_lain"
-                android:layout_width="185dp"
-                android:layout_height="45dp"
-                android:layout_marginBottom="80dp"
-                android:layout_marginStart="65dp"
-                android:backgroundTint="@color/warna_button"
-                android:text="Cek tugas lain"
-                android:textColor="#FFFFFF"
-                android:textSize="13sp"
-                />
-
-        </LinearLayout>
-
-    </ScrollView>
-
-    <!-- Bottom Navigation -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="70dp"
+    <androidx.constraintlayout.widget.Guideline
+        android:id="@+id/guideline"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:background="@drawable/bottom_nav_background"
-        android:gravity="center"
-        android:layout_marginLeft="50dp"
-        android:layout_marginRight="50dp"
-        android:layout_marginBottom="45dp"
-        android:backgroundTint="@color/navbar">
+        app:layout_constraintGuide_percent="0.25"/>
 
-        <ImageView
-            android:id="@+id/bottom_nav_home"
-            android:layout_width="0dp"
-            android:layout_height="32dp"
-            android:layout_weight="1"
-            android:src="@drawable/ic_home"
-            android:scaleType="centerInside"
-            android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:clickable="true"
-            android:focusable="true"
-            app:tint="@color/warna_button" />
+    <ImageView
+        android:id="@+id/logo"
+        android:layout_width="250dp"
+        android:layout_height="250dp"
+        android:src="@drawable/logo_skedulin"
+        app:layout_constraintTop_toTopOf="@id/guideline"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginBottom="8dp"
+        />
 
-        <ImageView
-            android:id="@+id/bottom_nav_calendar"
-            android:layout_width="0dp"
-            android:layout_height="32dp"
-            android:layout_weight="1"
-            android:src="@drawable/ic_calendar"
-            android:scaleType="centerInside"
-            android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:clickable="true"
-            android:focusable="true"
-            app:tint="@color/alarm_overlay" />
 
-        <ImageView
-            android:id="@+id/bottom_nav_profile"
-            android:layout_width="0dp"
-            android:layout_height="32dp"
-            android:layout_weight="1"
-            android:src="@drawable/ic_person"
-            android:scaleType="centerInside"
-            android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:clickable="true"
-            android:focusable="true"
-            app:tint="@color/alarm_overlay" />
-
-    </LinearLayout>
-
-</LinearLayout>
+</androidx.constraintlayout.widget.ConstraintLayout>

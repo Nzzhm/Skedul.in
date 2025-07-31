@@ -4,7 +4,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="#FFFFFF">
+    android:background="@color/white">
 
     <!-- Main Content ScrollView -->
     <ScrollView
@@ -40,27 +40,19 @@
                         android:text="Hello 👋"
                         android:textSize="16sp"
                         android:textColor="#666666"
-                        android:fontFamily="sans-serif" />
+                        android:fontFamily="sans-serif"
+                        android:textStyle="italic"/>
 
                     <TextView
                         android:id="@+id/text_user_name"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="Nama user"
-                        android:textSize="27sp"
+                        android:textSize="33sp"
                         android:textColor="@color/warna_button"
                         android:textStyle="bold"
                         android:fontFamily="sans-serif"
                         android:layout_marginTop="4dp" />
-
-                    <TextView
-                        android:id="@+id/text_user_email"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="user@email.com"
-                        android:textSize="12sp"
-                        android:textColor="#999999"
-                        android:layout_marginTop="2dp" />
 
                 </LinearLayout>
 
@@ -119,7 +111,7 @@
                     <Button
                         android:id="@+id/text_today_task_count"
                         android:layout_width="wrap_content"
-                        android:layout_height="35dp"
+                        android:layout_height="37dp"
                         android:layout_marginTop="8dp"
                         android:backgroundTint="@color/oren"
                         android:minHeight="0dp"
@@ -132,29 +124,29 @@
                 <ImageView
                     android:layout_width="25dp"
                     android:layout_height="25dp"
-                    android:src="@drawable/bubble_blue"
                     android:layout_alignParentTop="true"
                     android:layout_alignParentEnd="true"
                     android:layout_marginTop="10dp"
-                    android:layout_marginEnd="20dp" />
+                    android:layout_marginEnd="20dp"
+                    android:src="@drawable/bubble_blue" />
 
                 <ImageView
                     android:layout_width="15dp"
                     android:layout_height="15dp"
-                    android:src="@drawable/bubble_orange"
                     android:layout_alignParentTop="true"
                     android:layout_alignParentEnd="true"
                     android:layout_marginTop="25dp"
-                    android:layout_marginEnd="55dp" />
+                    android:layout_marginEnd="55dp"
+                    android:src="@drawable/bubble_orange" />
 
                 <ImageView
                     android:layout_width="35dp"
                     android:layout_height="35dp"
-                    android:src="@drawable/bubble_green"
                     android:layout_alignParentTop="true"
                     android:layout_alignParentEnd="true"
                     android:layout_marginTop="45dp"
-                    android:layout_marginEnd="25dp" />
+                    android:layout_marginEnd="25dp"
+                    android:src="@drawable/bubble_green" />
 
             </RelativeLayout>
 
@@ -218,6 +210,7 @@
             android:layout_width="0dp"
             android:layout_height="32dp"
             android:layout_weight="1"
+            android:paddingLeft="20dp"
             android:src="@drawable/ic_home"
             android:scaleType="centerInside"
             android:background="?android:attr/selectableItemBackgroundBorderless"
@@ -241,6 +234,7 @@
             android:id="@+id/bottom_nav_profile"
             android:layout_width="0dp"
             android:layout_height="32dp"
+            android:paddingRight="20dp"
             android:layout_weight="1"
             android:src="@drawable/ic_person"
             android:scaleType="centerInside"

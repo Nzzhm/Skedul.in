@@ -7,6 +7,11 @@ val PurpleGrey80 = Color(0xFFCCC2DC)
 val Pink80 = Color(0xFFEFB8C8)
 val White = Color(0xffffffff)
 
+val alarm_overlay = Color(0xFF80000000)
+val warna_button = Color(0xFF392AAB)
+val warna_nav = Color(0xFFFFD0CA)
+
+
 val Purple40 = Color(0xFF6650a4)
 val PurpleGrey40 = Color(0xFF625b71)
 val Pink40 = Color(0xFF7D5260)

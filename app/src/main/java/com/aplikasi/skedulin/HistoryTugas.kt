@@ -23,7 +23,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -364,11 +366,11 @@ fun HistoryTugasScreen() {
                 Icon(
                     Icons.Default.DateRange,
                     contentDescription = "Full Calendar",
-                    modifier = Modifier.size(16.dp),
+                    modifier = Modifier.size(13.dp),
                     tint = Color.White
                 )
                 Spacer(modifier = Modifier.width(4.dp))
-                Text("Kalender", fontSize = 12.sp, color = Color.White)
+                Text("Kalender", fontSize = 10.sp, color = Color.White)
             }
         }
 
@@ -433,7 +435,11 @@ fun HistoryTugasScreen() {
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Icon(
-                        if (searchQuery.isNotEmpty()) Icons.Default.Search else Icons.Default.CheckCircle,
+                        imageVector = if (searchQuery.isNotEmpty()) {
+                            Icons.Default.Search
+                        } else {
+                            ImageVector.vectorResource(id = R.drawable.ic_tugas)
+                        },
                         contentDescription = null,
                         tint = Color.Gray,
                         modifier = Modifier.size(64.dp)

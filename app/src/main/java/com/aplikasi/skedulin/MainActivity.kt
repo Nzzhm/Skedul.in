@@ -30,7 +30,6 @@ class MainActivity : AppCompatActivity() {
     // UI Components
     private lateinit var textGreeting: TextView
     private lateinit var textUserName: TextView
-    private lateinit var textUserEmail: TextView
     private lateinit var cardTodayTask: RelativeLayout
     private lateinit var textTodayTaskTitle: TextView
     private lateinit var textTodayTaskDate: TextView
@@ -46,10 +45,21 @@ class MainActivity : AppCompatActivity() {
     private lateinit var taskAdapter: MainTaskAdapter
     private val todayTasks = mutableListOf<Tugas>()
 
+    // FIXED: Kontrol notifikasi yang lebih tepat
+    private var hasShownWelcomeNotification = false
+    private var isAppJustStarted = true
+
     companion object {
         const val CHANNEL_ID = "task_notification_channel"
         const val NOTIFICATION_ID = 1001
         private const val NOTIFICATION_PERMISSION_REQUEST_CODE = 1001
+        // Konstanta untuk mengontrol frekuensi notifikasi (2 jam untuk mencegah spam)
+        private const val NOTIFICATION_INTERVAL = 2 * 60 * 60 * 1000L // 2 jam
+
+        // Key untuk SharedPreferences
+        private const val PREFS_NAME = "app_prefs"
+        private const val KEY_LAST_NOTIF_TIME = "last_notif_time"
+        private const val KEY_LAST_NOTIF_DATE = "last_notif_date"
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -71,12 +81,14 @@ class MainActivity : AppCompatActivity() {
         setupRecyclerView()
         setupButtonListeners()
         loadTodayTasks()
+
+        // FIXED: Set flag bahwa aplikasi baru saja dimulai
+        isAppJustStarted = true
     }
 
     private fun initializeViews() {
         textGreeting = findViewById(R.id.text_greeting)
         textUserName = findViewById(R.id.text_user_name)
-        textUserEmail = findViewById(R.id.text_user_email)
         cardTodayTask = findViewById(R.id.card_today_task)
         textTodayTaskTitle = findViewById(R.id.text_today_task_title)
         textTodayTaskDate = findViewById(R.id.text_today_task_date)
@@ -105,7 +117,6 @@ class MainActivity : AppCompatActivity() {
 
             textGreeting.text = greeting + " 👋"
             textUserName.text = firebaseUser.displayName ?: "User"
-            textUserEmail.text = firebaseUser.email ?: "No Email"
 
             // Set today's date
             val sdf = SimpleDateFormat("dd MMMM, yyyy", Locale.getDefault())
@@ -114,8 +125,14 @@ class MainActivity : AppCompatActivity() {
             // Load statistik tugas
             loadTugasStats()
 
-            // Tampilkan notifikasi welcome dengan info tugas hari ini
-            showWelcomeNotification()
+            // FIXED: Hanya tampilkan notifikasi welcome saat pertama kali membuka aplikasi
+            if (isAppJustStarted && !hasShownWelcomeNotification) {
+                showWelcomeNotification()
+                hasShownWelcomeNotification = true
+                android.util.Log.d("MainActivity", "Showing welcome notification - app just started")
+            } else {
+                android.util.Log.d("MainActivity", "Skipping welcome notification - already shown or not app start")
+            }
         } else {
             startActivity(Intent(this, LoginActivity::class.java))
             finish()
@@ -144,14 +161,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupButtonListeners() {
-
-
         btnCekTugasLain.setOnClickListener {
             startActivity(Intent(this, TampilTugas::class.java))
         }
 
         bottomNavHome.setOnClickListener {
-            // Already on home
+            // Already on home - tidak perlu melakukan apa-apa
         }
 
         bottomNavCalendar.setOnClickListener {
@@ -167,18 +182,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun showLogoutDialog() {
-        AlertDialog.Builder(this)
-            .setTitle("Logout")
-            .setMessage("Apakah Anda yakin ingin keluar?")
-            .setPositiveButton("Ya") { _, _ ->
-                firebaseAuth.signOut()
-                startActivity(Intent(this, LoginActivity::class.java))
-                finish()
-            }
-            .setNegativeButton("Batal", null)
-            .show()
-    }
 
     private fun loadTodayTasks() {
         val today = System.currentTimeMillis()
@@ -210,21 +213,33 @@ class MainActivity : AppCompatActivity() {
             tugas.deadline?.let { it < System.currentTimeMillis() } ?: false
         }
 
+        // Get current day name in Indonesian
+        val calendar = Calendar.getInstance()
+        val dayName = when (calendar.get(Calendar.DAY_OF_WEEK)) {
+            Calendar.SUNDAY -> "Minggu"
+            Calendar.MONDAY -> "Senin"
+            Calendar.TUESDAY -> "Selasa"
+            Calendar.WEDNESDAY -> "Rabu"
+            Calendar.THURSDAY -> "Kamis"
+            Calendar.FRIDAY -> "Jumat"
+            Calendar.SATURDAY -> "Sabtu"
+            else -> "Hari Ini"
+        }
+
         when {
             activeTasks.isEmpty() -> {
-                textTodayTaskTitle.text = "Tidak ada tugas hari ini"
-                textTodayTaskCount.text = "Santai aja! 😊"
+                textTodayTaskTitle.text = "$dayName"
+                textTodayTaskCount.text = "Tidak ada tugas hari ini 😊"
                 cardTodayTask.setBackgroundResource(R.drawable.card_today_task_empty)
             }
             overdueCount > 0 -> {
-                textTodayTaskTitle.text = "Overdue"
+                textTodayTaskTitle.text = "$dayName"
                 textTodayTaskCount.text = "Ada $overdueCount tugas terlambat"
                 cardTodayTask.setBackgroundResource(R.drawable.card_today_task_overdue)
             }
             else -> {
-                val nextTask = activeTasks.minByOrNull { it.deadline ?: Long.MAX_VALUE }
-                textTodayTaskTitle.text = nextTask?.namatugas ?: "Tugas Hari Ini"
-                textTodayTaskCount.text = "Hari ini ada ${activeTasks.size} tugas"
+                textTodayTaskTitle.text = "$dayName"
+                textTodayTaskCount.text = "Ada ${activeTasks.size} tugas untuk hari ini"
                 cardTodayTask.setBackgroundResource(R.drawable.card_today_task_normal)
             }
         }
@@ -232,10 +247,26 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        android.util.Log.d("MainActivity", "onResume called, isAppJustStarted: $isAppJustStarted, hasShownWelcomeNotification: $hasShownWelcomeNotification")
+
         // Refresh data ketika kembali ke MainActivity
         loadTugasStats()
         loadTodayTasks()
-        showWelcomeNotification()
+
+        // FIXED: Tandai bahwa ini bukan lagi app start setelah onResume pertama
+        if (isAppJustStarted) {
+            isAppJustStarted = false
+            android.util.Log.d("MainActivity", "App start phase ended")
+        }
+
+        // TIDAK ADA LAGI panggilan showWelcomeNotification() di sini
+        // Notifikasi hanya ditampilkan saat onCreate() pertama kali
+    }
+
+    // Override onBackPressed untuk handle back button behavior
+    override fun onBackPressed() {
+        // Langsung keluar dari aplikasi tanpa navigasi ke activity lain
+        finishAffinity()
     }
 
     private fun loadTugasStats() {
@@ -247,7 +278,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // DIPERBAIKI: Function untuk membuat semua notification channels yang dibutuhkan
+    // Function untuk membuat semua notification channels yang dibutuhkan
     private fun createNotificationChannels() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -296,7 +327,7 @@ class MainActivity : AppCompatActivity() {
         NotificationHelper.createNotificationChannels(this)
     }
 
-    // BARU: Request permissions yang diperlukan untuk alarm system
+    // Request permissions yang diperlukan untuk alarm system
     private fun requestNecessaryPermissions() {
         // Request exact alarm permission untuk Android 12+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -356,30 +387,39 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // Function untuk menampilkan welcome notification dengan info tugas hari ini
+    // FIXED: Function untuk menampilkan welcome notification dengan kontrol yang lebih ketat
     private fun showWelcomeNotification() {
-        val today = System.currentTimeMillis()
-        val calendar = Calendar.getInstance()
-        calendar.timeInMillis = today
+        val currentTime = System.currentTimeMillis()
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
-        // Reset to start of day
-        calendar.set(Calendar.HOUR_OF_DAY, 0)
-        calendar.set(Calendar.MINUTE, 0)
-        calendar.set(Calendar.SECOND, 0)
-        calendar.set(Calendar.MILLISECOND, 0)
-        val startOfDay = calendar.timeInMillis
+        // Cek waktu notifikasi terakhir
+        val lastNotifTime = prefs.getLong(KEY_LAST_NOTIF_TIME, 0L)
+        val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+        val lastNotifDate = prefs.getString(KEY_LAST_NOTIF_DATE, "")
 
-        // Set to end of day
-        calendar.set(Calendar.HOUR_OF_DAY, 23)
-        calendar.set(Calendar.MINUTE, 59)
-        calendar.set(Calendar.SECOND, 59)
-        val endOfDay = calendar.timeInMillis
+        // FIXED: Cek apakah sudah pernah kirim notifikasi hari ini
+        if (lastNotifDate == today) {
+            android.util.Log.d("MainActivity", "Notification already sent today: $lastNotifDate")
+            return
+        }
 
-        FirebaseRepository.getTugasByDate(today) { tugasHariIni ->
+        // FIXED: Cek interval waktu (minimal 2 jam sejak notifikasi terakhir)
+        if (currentTime - lastNotifTime < NOTIFICATION_INTERVAL) {
+            android.util.Log.d("MainActivity", "Notification interval not met: ${(currentTime - lastNotifTime) / 1000 / 60} minutes since last")
+            return
+        }
+
+        android.util.Log.d("MainActivity", "Checking tasks for notification...")
+
+        val todayTimestamp = System.currentTimeMillis()
+
+        FirebaseRepository.getTugasByDate(todayTimestamp) { tugasHariIni ->
             val tugasBelumSelesai = tugasHariIni.filter { !it.selesai }
             val tugasOverdue = tugasHariIni.filter {
-                !it.selesai && it.deadline != null && it.deadline!! < today
+                !it.selesai && it.deadline != null && it.deadline!! < todayTimestamp
             }
+
+            android.util.Log.d("MainActivity", "Tasks found - Total: ${tugasHariIni.size}, Incomplete: ${tugasBelumSelesai.size}, Overdue: ${tugasOverdue.size}")
 
             if (tugasBelumSelesai.isNotEmpty() || tugasOverdue.isNotEmpty()) {
                 val title = when {
@@ -389,15 +429,41 @@ class MainActivity : AppCompatActivity() {
                 }
 
                 val message = when {
-                    tugasOverdue.isNotEmpty() && tugasBelumSelesai.size > tugasOverdue.size ->
+                    tugasOverdue.isNotEmpty() && tugasBelumSelesai.size > tugasOverdue.size -> {
                         "${tugasOverdue.size} terlambat, ${tugasBelumSelesai.size - tugasOverdue.size} untuk hari ini"
-                    tugasOverdue.isNotEmpty() ->
-                        "Segera selesaikan: ${tugasOverdue.take(2).joinToString(", ") { it.namatugas }}"
-                    else ->
-                        tugasBelumSelesai.take(2).joinToString(", ") { it.namatugas }
+                    }
+                    tugasOverdue.isNotEmpty() -> {
+                        val overdueWithTime = tugasOverdue.take(2).map { tugas ->
+                            val deadlineStr = if (tugas.deadline != null) {
+                                val dateFormat = SimpleDateFormat("dd/MM HH:mm", Locale.getDefault())
+                                " (${dateFormat.format(Date(tugas.deadline!!))})"
+                            } else ""
+                            "${tugas.namatugas}$deadlineStr"
+                        }
+                        "Segera selesaikan: ${overdueWithTime.joinToString(", ")}"
+                    }
+                    else -> {
+                        val tasksWithTime = tugasBelumSelesai.take(2).map { tugas ->
+                            val deadlineStr = if (tugas.deadline != null) {
+                                val dateFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
+                                " (${dateFormat.format(Date(tugas.deadline!!))})"
+                            } else ""
+                            "${tugas.namatugas}$deadlineStr"
+                        }
+                        tasksWithTime.joinToString(", ")
+                    }
                 }
 
+                android.util.Log.d("MainActivity", "Showing notification: $title")
                 showNotification(title, message)
+
+                // FIXED: Simpan waktu dan tanggal notifikasi terakhir
+                prefs.edit()
+                    .putLong(KEY_LAST_NOTIF_TIME, currentTime)
+                    .putString(KEY_LAST_NOTIF_DATE, today)
+                    .apply()
+            } else {
+                android.util.Log.d("MainActivity", "No tasks to notify about")
             }
         }
     }

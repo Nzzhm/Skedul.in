@@ -10,20 +10,35 @@ import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.google.firebase.auth.FirebaseAuth
 import java.text.SimpleDateFormat
 import java.util.*
@@ -35,7 +50,7 @@ class TambahTugas : ComponentActivity() {
             MaterialTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
+                    color = Color(0xFFF8F9FA)
                 ) {
                     TambahTugasScreen(onTaskAdded = { finish() })
                 }
@@ -49,22 +64,44 @@ class TambahTugas : ComponentActivity() {
 fun TambahTugasScreen(onTaskAdded: () -> Unit) {
     val context = LocalContext.current
 
-    // State variables - menggunakan derivedStateOf untuk optimasi
+    // State variables
     var namatugas by remember { mutableStateOf("") }
     var deskripsi by remember { mutableStateOf("") }
     var prioritasPilihan by remember { mutableStateOf("Sedang") }
+    var isLoading by remember { mutableStateOf(false) }
 
-    // Calendar instances - hanya dibuat sekali
+    // Calendar instances
     val deadlineCalendar = remember { Calendar.getInstance() }
     val pengingatCalendar = remember { Calendar.getInstance() }
 
     var deadlineText by remember { mutableStateOf("") }
     var pengingatText by remember { mutableStateOf("") }
 
-    // DateFormat - dibuat sekali dan di-remember
+    val saveIcon = ImageVector.vectorResource(id = R.drawable.ic_save)
+
+    // DateFormat
     val sdf = remember { SimpleDateFormat("d MMMM yyyy, HH:mm", Locale.getDefault()) }
 
-    // TAMBAHAN: Function untuk mengatur alarm pengingat
+    // Gradient colors
+    val gradientColors = listOf(
+        Color(0xFF667EEA),
+        Color(0xFF764BA2)
+    )
+
+    // Priority colors
+    val priorityColors = mapOf(
+        "Rendah" to Color(0xFF10B981),
+        "Sedang" to Color(0xFFF59E0B),
+        "Tinggi" to Color(0xFFEF4444)
+    )
+
+    // Animation states
+    val scale by animateFloatAsState(
+        targetValue = if (isLoading) 0.95f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy)
+    )
+
+    // Function untuk mengatur alarm pengingat
     val setAlarmForTask = remember {
         { tugasId: String, pengingatTime: Long, taskName: String ->
             try {
@@ -77,12 +114,11 @@ fun TambahTugasScreen(onTaskAdded: () -> Unit) {
 
                 val pendingIntent = PendingIntent.getBroadcast(
                     context,
-                    tugasId.hashCode(), // Unique request code
+                    tugasId.hashCode(),
                     intent,
                     PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
                 )
 
-                // Set alarm exact (API 19+)
                 alarmManager.setExactAndAllowWhileIdle(
                     AlarmManager.RTC_WAKEUP,
                     pengingatTime,
@@ -96,7 +132,7 @@ fun TambahTugasScreen(onTaskAdded: () -> Unit) {
         }
     }
 
-    // Optimized time picker function - menghindari recreate dialog
+    // Time picker function
     val showTimePicker = remember {
         { calendar: Calendar, onTimeSelected: (String) -> Unit ->
             TimePickerDialog(
@@ -113,7 +149,7 @@ fun TambahTugasScreen(onTaskAdded: () -> Unit) {
         }
     }
 
-    // Optimized date picker function
+    // Date picker function
     val showDatePicker = remember {
         { calendar: Calendar, onTimeSelected: (String) -> Unit ->
             DatePickerDialog(
@@ -131,13 +167,14 @@ fun TambahTugasScreen(onTaskAdded: () -> Unit) {
         }
     }
 
-    // Simpan tugas function - DIUPDATE untuk menambahkan alarm
+    // Simpan tugas function
     val simpanTugas = remember {
         {
             val currentUser = FirebaseAuth.getInstance().currentUser
             if (namatugas.isBlank()) {
                 Toast.makeText(context, "Nama tugas tidak boleh kosong", Toast.LENGTH_SHORT).show()
             } else if (currentUser != null) {
+                isLoading = true
                 val deadlineMillis = if (deadlineText.isNotEmpty()) deadlineCalendar.timeInMillis else null
                 val pengingatMillis = if (pengingatText.isNotEmpty()) pengingatCalendar.timeInMillis else null
 
@@ -151,17 +188,18 @@ fun TambahTugasScreen(onTaskAdded: () -> Unit) {
                 )
 
                 FirebaseRepository.addTugas(tugas) { sukses, pesan ->
+                    isLoading = false
                     if (sukses) {
                         Toast.makeText(context, "Tugas berhasil ditambahkan!", Toast.LENGTH_SHORT).show()
 
-                        // TAMBAHAN: Set alarm jika ada pengingat
+                        // Set alarm jika ada pengingat
                         if (pengingatMillis != null && pengingatMillis > System.currentTimeMillis()) {
                             setAlarmForTask(tugas.id, pengingatMillis, namatugas)
                         }
 
-                        // TAMBAHAN: Set alarm untuk H-1 deadline jika ada
+                        // Set alarm untuk H-1 deadline jika ada
                         if (deadlineMillis != null) {
-                            val oneDayBefore = deadlineMillis - (24 * 60 * 60 * 1000) // H-1
+                            val oneDayBefore = deadlineMillis - (24 * 60 * 60 * 1000)
                             if (oneDayBefore > System.currentTimeMillis()) {
                                 val intent = Intent(context, AlarmReceiver::class.java).apply {
                                     putExtra("taskId", tugas.id)
@@ -196,190 +234,395 @@ fun TambahTugasScreen(onTaskAdded: () -> Unit) {
         }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Tambah Tugas Baru") },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color(0xFF6200EE),
-                    titleContentColor = Color.White
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(
+                        Color(0xFFF8F9FA),
+                        Color(0xFFE9ECEF)
+                    )
+                )
+            )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+        ) {
+            // Modern Header
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        Brush.horizontalGradient(gradientColors),
+                        shape = RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp)
+                    )
+                    .padding(24.dp)
+            ) {
+                Column {
+                    Text(
+                        text = "Buat Tugas Baru",
+                        fontSize = 28.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                    Text(
+                        text = "Atur dan kelola tugas Anda dengan mudah",
+                        fontSize = 16.sp,
+                        color = Color.White.copy(alpha = 0.8f),
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                }
+            }
+
+            Column(
+                modifier = Modifier
+                    .padding(20.dp)
+                    .scale(scale),
+                verticalArrangement = Arrangement.spacedBy(20.dp)
+            ) {
+                // Modern Input Fields
+                ModernInputField(
+                    value = namatugas,
+                    onValueChange = { namatugas = it },
+                    label = "Nama Tugas",
+                    icon = ImageVector.vectorResource(id = R.drawable.ic_tugas),
+                    placeholder = "Masukkan nama tugas..."
+                )
+
+                ModernInputField(
+                    value = deskripsi,
+                    onValueChange = { deskripsi = it },
+                    label = "Deskripsi",
+                    icon = ImageVector.vectorResource(id = R.drawable.ic_deskripsi),
+                    placeholder = "Deskripsikan tugas Anda...",
+                    maxLines = 4,
+                    minHeight = 120.dp
+                )
+
+                // Modern Date Time Picker
+                ModernDateTimePicker(
+                    title = "Deadline",
+                    subtitle = "Kapan tugas ini harus selesai?",
+                    selectedTime = deadlineText,
+                    icon = ImageVector.vectorResource(id = R.drawable.ic_schedule),
+                    iconColor = Color(0xFFEF4444),
+                    onClick = { showDatePicker(deadlineCalendar) { deadlineText = it } }
+                )
+
+                ModernDateTimePicker(
+                    title = "Pengingat",
+                    subtitle = "Kapan Anda ingin diingatkan?",
+                    selectedTime = pengingatText,
+                    icon = ImageVector.vectorResource(id = R.drawable.ic_alarm),
+                    iconColor = Color(0xFF8B5CF6),
+                    onClick = { showDatePicker(pengingatCalendar) { pengingatText = it } }
+                )
+
+                // Modern Priority Selector
+                ModernPrioritySelector(
+                    selectedPriority = prioritasPilihan,
+                    onPrioritySelected = { prioritasPilihan = it },
+                    priorityColors = priorityColors
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Modern Save Button
+                ModernActionButton(
+                    text = if (isLoading) "Menyimpan..." else "Simpan Tugas",
+                    icon = if (isLoading) null else saveIcon,
+                    isLoading = isLoading,
+                    gradientColors = gradientColors,
+                    onClick = simpanTugas
+                )
+
+                Spacer(modifier = Modifier.height(20.dp))
+            }
+        }
+    }
+}
+
+@Composable
+fun ModernInputField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    icon: ImageVector,
+    placeholder: String,
+    maxLines: Int = 1,
+    minHeight: Dp = 56.dp
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(4.dp, RoundedCornerShape(16.dp)),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White)
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(bottom = 12.dp)
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = Color(0xFF667EEA),
+                    modifier = Modifier.size(20.dp)
+                )
+                Text(
+                    text = label,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color(0xFF374151),
+                    modifier = Modifier.padding(start = 8.dp)
+                )
+            }
+
+            OutlinedTextField(
+                value = value,
+                onValueChange = onValueChange,
+                placeholder = {
+                    Text(
+                        text = placeholder,
+                        color = Color(0xFF9CA3AF)
+                    )
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = minHeight),
+                maxLines = maxLines,
+                shape = RoundedCornerShape(12.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = Color(0xFF667EEA),
+                    unfocusedBorderColor = Color(0xFFE5E7EB),
+                    focusedContainerColor = Color.Transparent,
+                    unfocusedContainerColor = Color.Transparent
                 )
             )
         }
-    ) { padding ->
-        // Menggunakan LazyColumn untuk performa yang lebih baik
-        Column(
-            modifier = Modifier
-                .padding(padding)
-                .fillMaxSize()
-                .background(Color.White)
-                .padding(16.dp)
-                .verticalScroll(rememberScrollState()),
-            horizontalAlignment = Alignment.CenterHorizontally
+    }
+}
+
+@Composable
+fun ModernDateTimePicker(
+    title: String,
+    subtitle: String,
+    selectedTime: String,
+    icon: ImageVector,
+    iconColor: Color,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(4.dp, RoundedCornerShape(16.dp))
+            .clickable { onClick() },
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White)
+    ) {
+        Row(
+            modifier = Modifier.padding(20.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            // Input nama tugas
-            OutlinedTextField(
-                value = namatugas,
-                onValueChange = { namatugas = it },
-                label = { Text("Nama Tugas") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true // Optimasi untuk single line
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Input deskripsi
-            OutlinedTextField(
-                value = deskripsi,
-                onValueChange = { deskripsi = it },
-                label = { Text("Deskripsi") },
+            Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(120.dp),
-                maxLines = 5 // Batasi jumlah baris untuk performa
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // SOLUSI UTAMA: Custom date picker button yang lebih responsif
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth(),
-                onClick = { showDatePicker(deadlineCalendar) { deadlineText = it } },
-                colors = CardDefaults.cardColors(containerColor = Color.Transparent),
-                border = CardDefaults.outlinedCardBorder()
+                    .size(48.dp)
+                    .background(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                iconColor.copy(alpha = 0.2f),
+                                iconColor.copy(alpha = 0.1f)
+                            )
+                        ),
+                        shape = CircleShape
+                    ),
+                contentAlignment = Alignment.Center
             ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Column {
-                        Text(
-                            text = "Deadline",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        Text(
-                            text = if (deadlineText.isEmpty()) "Pilih tanggal deadline" else deadlineText,
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = if (deadlineText.isEmpty())
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                            else MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-                    Icon(
-                        Icons.Default.DateRange,
-                        contentDescription = "Pilih Tanggal",
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                }
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = iconColor,
+                    modifier = Modifier.size(24.dp)
+                )
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Custom pengingat picker dengan desain yang sama
-            Card(
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth(),
-                onClick = { showDatePicker(pengingatCalendar) { pengingatText = it } },
-                colors = CardDefaults.cardColors(containerColor = Color.Transparent),
-                border = CardDefaults.outlinedCardBorder()
+                    .weight(1f)
+                    .padding(start = 16.dp)
             ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Column {
-                        Text(
-                            text = "Pengingat",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        Text(
-                            text = if (pengingatText.isEmpty()) "Pilih waktu pengingat" else pengingatText,
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = if (pengingatText.isEmpty())
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                            else MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-                    Icon(
-                        Icons.Default.DateRange,
-                        contentDescription = "Pilih Tanggal",
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                }
+                Text(
+                    text = title,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color(0xFF1F2937)
+                )
+                Text(
+                    text = if (selectedTime.isEmpty()) subtitle else selectedTime,
+                    fontSize = 14.sp,
+                    color = if (selectedTime.isEmpty()) Color(0xFF6B7280) else Color(0xFF059669),
+                    fontWeight = if (selectedTime.isEmpty()) FontWeight.Normal else FontWeight.Medium,
+                    modifier = Modifier.padding(top = 2.dp)
+                )
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Icon(
+                imageVector = ImageVector.vectorResource(id = R.drawable.ic_panah),
+                contentDescription = null,
+                tint = Color(0xFF9CA3AF),
+                modifier = Modifier.size(20.dp)
+            )
+        }
+    }
+}
 
-            // Prioritas section dengan Card untuk konsistensi
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = Color.Transparent),
-                border = CardDefaults.outlinedCardBorder()
+@Composable
+fun ModernPrioritySelector(
+    selectedPriority: String,
+    onPrioritySelected: (String) -> Unit,
+    priorityColors: Map<String, Color>
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(4.dp, RoundedCornerShape(16.dp)),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White)
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(bottom = 16.dp)
             ) {
-                Column(
-                    modifier = Modifier.padding(16.dp)
-                ) {
-                    Text(
-                        text = "Prioritas",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
+                Icon(
+                    imageVector = ImageVector.vectorResource(id = R.drawable.ic_bendera),
+                    contentDescription = null,
+                    tint = Color(0xFF667EEA),
+                    modifier = Modifier.size(20.dp)
+                )
+                Text(
+                    text = "Prioritas",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color(0xFF374151),
+                    modifier = Modifier.padding(start = 8.dp)
+                )
+            }
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                listOf("Rendah", "Sedang", "Tinggi").forEach { priority ->
+                    val isSelected = selectedPriority == priority
+                    val color = priorityColors[priority] ?: Color.Gray
+
+                    Card(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable { onPrioritySelected(priority) }
+                            .animateContentSize(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (isSelected) color.copy(alpha = 0.1f) else Color(0xFFF9FAFB)
+                        ),
+                        border = if (isSelected) {
+                            CardDefaults.outlinedCardBorder().copy(
+                                brush = Brush.linearGradient(listOf(color, color)),
+                                width = 2.dp
+                            )
+                        } else {
+                            CardDefaults.outlinedCardBorder().copy(
+                                brush = Brush.linearGradient(listOf(Color(0xFFE5E7EB), Color(0xFFE5E7EB)))
+                            )
+                        }
                     ) {
-                        listOf("Rendah", "Sedang", "Tinggi").forEach { prioritas ->
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.weight(1f) // Distribusi ruang yang merata
-                            ) {
-                                RadioButton(
-                                    selected = prioritasPilihan == prioritas,
-                                    onClick = { prioritasPilihan = prioritas }
-                                )
-                                Text(
-                                    text = prioritas,
-                                    style = MaterialTheme.typography.bodyMedium
-                                )
-                            }
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(12.dp)
+                                    .background(color, CircleShape)
+                            )
+                            Text(
+                                text = priority,
+                                fontSize = 12.sp,
+                                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
+                                color = if (isSelected) color else Color(0xFF6B7280),
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.padding(top = 6.dp)
+                            )
                         }
                     }
                 }
             }
+        }
+    }
+}
 
-            Spacer(modifier = Modifier.height(32.dp))
-
-            // Tombol simpan dengan feedback visual
-            Button(
-                onClick = simpanTugas,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp), // Height yang konsisten
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF6200EE)
+@Composable
+fun ModernActionButton(
+    text: String,
+    icon: ImageVector?,
+    isLoading: Boolean,
+    gradientColors: List<Color>,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(8.dp, RoundedCornerShape(16.dp))
+            .clickable(enabled = !isLoading) { onClick() },
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    brush = Brush.horizontalGradient(gradientColors),
+                    shape = RoundedCornerShape(16.dp)
                 )
+                .padding(20.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
             ) {
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        color = Color.White,
+                        strokeWidth = 2.dp
+                    )
+                } else if (icon != null) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                }
+
                 Text(
-                    text = "Simpan Tugas",
-                    style = MaterialTheme.typography.titleMedium,
+                    text = text,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold,
                     color = Color.White
                 )
             }
-
-            // Tambah spacer di bawah untuk scroll yang lebih nyaman
-            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 }

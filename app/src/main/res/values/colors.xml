@@ -49,4 +49,18 @@
     <!-- Gradient colors -->
     <color name="gradient_start">#0F0F23</color>
     <color name="gradient_end">#1A1A2E</color>
+
+    <color name="text_primary">#2D3748</color>
+    <color name="white_80">#CCFFFFFF</color>
+    <color name="avatar_background">#E2E8F0</color>
+    <color name="text_secondary">#718096</color>
+    <color name="logout_color">#E53E3E</color>
+    <color name="logout_background">#FED7D7</color>
+
+    <!-- Warna untuk dialog modern -->
+    <color name="background_light">#F8F9FA</color>
+    <color name="warning_background">#FFF3CD</color>
+    <color name="warning_color">#856404</color>
+    <color name="warning_text">#664D03</color>
+
 </resources>
